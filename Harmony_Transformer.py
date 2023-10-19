@@ -3,8 +3,12 @@ import random
 import tensorflow as tf # version 1.11
 from tensorflow.python.framework import ops
 
+from pathlib import Path
+
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+root_dir = Path(__file__).parent
 
 class Harmony_Transformer(object):
     def __init__(self,
@@ -423,8 +427,8 @@ class Harmony_Transformer(object):
         return logits, chord_predictions
 
     def load_data(self):
-        fileDir = 'preprocessed_data\\Billboard_data_mirex_Mm_model_input_final.npz'
-        with np.load(fileDir) as input_data:
+        fileDir = root_dir / 'preprocessed_data' / 'Billboard_data_mirex_Mm_model_input_final.npz'
+        with np.load(fileDir, allow_pickle=True) as input_data:
             x_train = input_data['x_train']
             TC_train = input_data['TC_train']
             y_train = input_data['y_train']
@@ -545,6 +549,3 @@ if __name__ == '__main__':
 
     model = Harmony_Transformer()
     model.train()
-
-
-
