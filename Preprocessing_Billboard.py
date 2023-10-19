@@ -1,14 +1,14 @@
 import numpy as np
 import os
-from collections import Counter
 import pickle
-import bz2
 import math
-import itertools
-import time
-import random
 from scipy.ndimage import gaussian_filter1d
 import csv
+
+from pathlib import Path
+from tqdm import tqdm
+
+root_dir = Path(__file__).parent
 
 def enharmonic(chord):
     enharmonic_table = {'Cb': 'B',
@@ -63,15 +63,14 @@ def chord2int(chord):
         print('Cannot find the chord: %s' % chord)
         quit()
 
-def read_Billborad():
-    print('Running Message: read Billborad data ...')
+def read_Billboard():
+    print('Running Message: read Billboard data ...')
 
-    dir = "McGill-Billboard"
-    adir = dir + "\\McGill-Billboard-MIREX" # directory of annotations
-    fdir = dir + "\\McGill-Billboard-Features" # directory of features
-    foldernames = sorted(os.listdir(fdir)) # serial numbers of all pieces
+    adir = root_dir / "McGill-Billboard" / "McGill-Billboard-MIREX" # directory of annotations
+    fdir = root_dir / "McGill-Billboard" / "McGill-Billboard-Features" # directory of features
+    foldernames = sorted([f.name for f in fdir.glob('*')]) # serial numbers of all pieces
 
-    id_dir = dir + "\\billboard-2.0-index.csv"
+    id_dir = root_dir / "McGill-Billboard" / "billboard-2.0-index.csv"
     abandomed_ids = [353, 634, 1106]
     with open(id_dir, "r") as id_file:
         ids = {}
@@ -105,7 +104,7 @@ def read_Billborad():
     for name in foldernames:
         if name in train_set or name in test_set:
             # print(name)
-            filedir = adir + '\\' + name + '\\' + 'majmin.lab'
+            filedir = adir / name / 'majmin.lab'
             annotation = []
             with open(filedir, 'r') as file:
                 for line in file:
@@ -117,9 +116,9 @@ def read_Billborad():
     # load features and append chord label for each frame
     BillboardData = {}
     dt = [('op', object), ('onset', np.float32), ('chroma', object), ('chord', np.int32), ('chordChange', np.int32)]  # dtype of output data
-    for name in foldernames:
+    for name in tqdm(foldernames):
         if name in train_set or name in test_set:
-            filedir = fdir + '\\' + name + '\\' + 'bothchroma.csv'
+            filedir = fdir / name / 'bothchroma.csv'
             rows = np.genfromtxt(filedir, delimiter=',')
             frames = []
             pre_chord = None
@@ -151,18 +150,22 @@ def read_Billborad():
     """ BillboardData = {'Name': structured array with fileds = ('op', 'onset', 'chroma',  'chord', 'chordChange'), ...} """
 
     # save the preprocessed data
-    if not os.path.exists('preprocessed_data'):
-        os.makedirs('preprocessed_data')
-    outputdir = 'preprocessed_data\\Billboard_data_mirex_Mm.pkl'
-    with open(outputdir, "wb") as output_data:
+    output_dir = root_dir / 'preprocessed_data'
+    output_fn = 'Billboard_data_mirex_Mm.pkl'
+
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True)
+
+    with open(output_dir / output_fn, "wb") as output_data:
         pickle.dump(BillboardData, output_data)
 
-    print('Billboard data saved at %s' % outputdir)
+    print('Billboard data saved at %s' % output_fn)
     return train_set, test_set
 
 def augment_Billboard():
 
-    inputdir = 'preprocessed_data\\Billboard_data_mirex_Mm.pkl'
+    inputdir = root_dir / 'preprocessed_data' / 'Billboard_data_mirex_Mm.pkl'
+
     with open(inputdir, 'rb') as input_data:
         BillboardData = pickle.load(input_data)
 
@@ -203,16 +206,16 @@ def augment_Billboard():
             BillboardData_shift[key]['chordChange'] = chordChange_shift
 
         # save the preprocessed data
-        outputdir = 'preprocessed_data\\Billboard_data_mirex_Mm_shift_' + str(shift) + '.pkl'
-        with open(outputdir, "wb") as output_file:
+        out_dir = root_dir / 'preprocessed_data' / f'Billboard_data_mirex_Mm_shift_{shift}.pkl'
+        with open(out_dir, "wb") as output_file:
             pickle.dump(BillboardData_shift, output_file)
-        print('Billboard data saved at %s' % outputdir)
+        print('Billboard data saved at %s' % out_dir)
 
 def segment_Billboard():
     print('Running Message: segment Billborad ...')
 
     for shift in range(12):
-        inputdir = 'preprocessed_data\\Billboard_data_mirex_Mm_shift_' + str(shift) + '.pkl'
+        inputdir = root_dir / 'preprocessed_data' / f'Billboard_data_mirex_Mm_shift_{shift}.pkl'
         with open(inputdir, 'rb') as input_data:
             BillboardData_shift = pickle.load(input_data)
         """BillboardData_shift = {'op': {'chroma': array, 'TC': array, 'chord': array, 'chordChange': array}, ...}"""
@@ -245,7 +248,7 @@ def segment_Billboard():
             BillboardData_shift_segment[key]['chordChange'] = chordChange_segment.astype(np.int32)
 
         # save the preprocessed data
-        outputdir = 'preprocessed_data\\Billboard_data_mirex_Mm_shift_segment_' + str(shift) + '.pkl'
+        outputdir = root_dir / 'preprocessed_data' / f'Billboard_data_mirex_Mm_shift_segment_{shift}.pkl'
         with open(outputdir, "wb") as output_file:
             pickle.dump(BillboardData_shift_segment, output_file)
         print('Billboard data saved at %s' % outputdir)
@@ -256,7 +259,7 @@ def reshape_Billboard():
     global n_steps
 
     for shift in range(12):
-        inputdir = 'preprocessed_data\\Billboard_data_mirex_Mm_shift_segment_' + str(shift) + '.pkl' # with segment
+        inputdir = root_dir / 'preprocessed_data' / f'Billboard_data_mirex_Mm_shift_segment_{shift}.pkl'# with segment
         with open(inputdir, 'rb') as input_data:
             BillboardData_shift = pickle.load(input_data)
         """BillboardData_shift = {'op': {'chroma': array, 'TC': array, 'chord': array, 'chordChange': array}, ...}"""
@@ -301,7 +304,7 @@ def reshape_Billboard():
             # BillboardData_reshape[key]['nSegment'] = (n_sequences // 2 + 1)*n_steps - n_pad
 
         # save the preprocessed data
-        outputdir = 'preprocessed_data\\Billboard_data_mirex_Mm_reshape_' + str(shift) + '.pkl' # with segment
+        outputdir = root_dir / 'preprocessed_data' / f'Billboard_data_mirex_Mm_reshape_{shift}.pkl' # with segment
         with open(outputdir, "wb") as output_file:
             pickle.dump(BillboardData_reshape, output_file)
         print('reshaped Billboard data saved at %s' % outputdir)
@@ -315,13 +318,13 @@ def split_dataset(train_set, test_set):
     #     print(train_set)
     #     print(test_set)
 
-    inputdir = 'preprocessed_data\\Billboard_data_mirex_Mm_reshape_0.pkl' # with segment
+    inputdir = root_dir / 'preprocessed_data' / 'Billboard_data_mirex_Mm_reshape_0.pkl' # with segment
     with open(inputdir, 'rb') as input_data:
         BillboardData_reshape_0 = pickle.load(input_data)
         """BillboardData_reshape = {'op': {'chroma': array, 'TC': array, 'chord': array, 'chordChange': array, 'sequenceLen': array, 'nSequence': array}, ...}"""
 
     # split dataset into training, validation, and testing sets
-    dir = "McGill-Billboard\\McGill-Billboard-Features"
+    dir = root_dir / "McGill-Billboard" / "McGill-Billboard-Features"
     ops = sorted(os.listdir(dir))
     split_sets = {'train':[], 'valid': []}
     for i, op in enumerate(ops):
@@ -341,7 +344,7 @@ def split_dataset(train_set, test_set):
 
     x_train, TC_train, y_train, y_cc_train, y_len_train = [], [], [], [], []
     for shift in range(12):
-        inputdir = 'preprocessed_data\\Billboard_data_mirex_Mm_reshape_' + str(shift) + '.pkl' # with segment
+        inputdir = root_dir / 'preprocessed_data' / f'Billboard_data_mirex_Mm_reshape_{shift}.pkl' # with segment
         with open(inputdir, 'rb') as input_data:
             BillboardData_reshape = pickle.load(input_data)
             """BillboardData_reshape = {'op': {'chroma': array, 'TC': array, 'chord': array, 'chordChange': array, 'sequenceLen': array, 'nSequence': array}, ...}"""
@@ -357,7 +360,7 @@ def split_dataset(train_set, test_set):
     y_cc_train = np.concatenate(y_cc_train, axis=0)
     y_len_train  = np.concatenate(y_len_train, axis=0)
 
-    outputdir = 'preprocessed_data\\Billboard_data_mirex_Mm_model_input_final.npz' # with segment
+    outputdir = root_dir / 'preprocessed_data' / 'Billboard_data_mirex_Mm_model_input_final.npz' # with segment
     with open(outputdir, "wb") as output_file:
         np.savez_compressed(output_file,
                             x_train=x_train,
@@ -380,7 +383,7 @@ if __name__ == '__main__':
     segment_hop = 5 # ~ 0.25 sec
     n_steps = 100 #  ~ 23 sec
 
-    train_set, test_set = read_Billborad()
+    train_set, test_set = read_Billboard()
     augment_Billboard()
     segment_Billboard()
     reshape_Billboard()
