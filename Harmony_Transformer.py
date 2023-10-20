@@ -448,7 +448,7 @@ class Harmony_Transformer(object):
 
     def train(self):
         # load input data
-        print("load intpu data...")
+        print("load input data...")
         x_train, TC_train, y_train, y_cc_train, y_len_train, \
         x_valid, TC_valid, y_valid, y_cc_valid, y_len_valid, \
         split_sets = self.load_data()
