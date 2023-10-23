@@ -4,6 +4,7 @@ import tensorflow as tf # version 1.11
 from tensorflow.python.framework import ops
 
 from pathlib import Path
+import pickle as pkl
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -542,10 +543,15 @@ class Harmony_Transformer(object):
                                    stochastic_tensor: True}
                 _, train_loss, train_loss_ct, train_loss_c, train_L2,  train_cc_pred, train_c_pred, train_acc = sess.run(train_run_list, feed_dict=train_feed_fict)
 
-                if step % (epoch // 2) == 0:
+                if step % 100 == 0:
                     print("------ step %d: train_loss %.4f (ct %.4f, c %.4f, L2 %.4f), train_accuracy %.4f ------" % (step, train_loss, train_loss_ct, train_loss_c, train_L2, train_acc))
 
 if __name__ == '__main__':
 
     model = Harmony_Transformer()
     model.train()
+
+    # save model as pkl
+    with open("HarmonyTransformer.pkl", "wb") as f:
+        pkl.dump(model, f)
+
