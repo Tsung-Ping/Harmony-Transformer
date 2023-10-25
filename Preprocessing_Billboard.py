@@ -72,6 +72,11 @@ def read_Billboard():
 
     id_dir = root_dir / "McGill-Billboard" / "billboard-2.0-index.csv"
     abandomed_ids = [353, 634, 1106]
+
+    # load ids
+    # ids = {'name': [id1, id2, ...], ...}
+    # with name = artist + ': ' + title
+
     with open(id_dir, "r") as id_file:
         ids = {}
         reader = csv.reader(id_file, delimiter=',')
@@ -99,6 +104,9 @@ def read_Billboard():
                 test_set.append(str(id).zfill(4))
 
     # load annotations
+    # they are of shape [('onset', <onset_value>), ('end', <end_value>), ('chord', <chord_label>)]
+    # example: [('onset', 0.0), ('end', 0.5), ('chord', 'C:maj')]
+
     annotations = {}
     adt = [('onset', np.float32), ('end', np.float32), ('chord', object)] # dtype of annotations
     for name in foldernames:
@@ -114,6 +122,10 @@ def read_Billboard():
                 annotations[name] = np.array(annotation, dtype=adt)
 
     # load features and append chord label for each frame
+    # there are 2 chromagrams for each frame, one for each channel
+    # frames has this shape: (name, onset, both_chroma, chord_int, chordChange) 
+    # e.g. ('0001', 0.0, array([0.1, 0.2, ...]), 0, 1)
+
     BillboardData = {}
     dt = [('op', object), ('onset', np.float32), ('chroma', object), ('chord', np.int32), ('chordChange', np.int32)]  # dtype of output data
     for name in tqdm(foldernames):
@@ -148,6 +160,8 @@ def read_Billboard():
             BillboardData[name] = np.array(frames, dtype=dt)  # [time, ]
 
     """ BillboardData = {'Name': structured array with fileds = ('op', 'onset', 'chroma',  'chord', 'chordChange'), ...} """
+    # keys: ['0001', '0002', ...]
+    # values: structured array with frames = ('op', 'onset', 'chroma',  'chord', 'chordChange')
 
     # save the preprocessed data
     output_dir = root_dir / 'preprocessed_data'
@@ -214,6 +228,10 @@ def augment_Billboard():
 def segment_Billboard():
     print('Running Message: segment Billborad ...')
 
+    # conversion of frames based representation to segments
+    # each segment has a length of segment_width = 21 ~ 1 frame = 0.046 sec, segment ~ 0.5 sec
+    # the hop size is segment_hop = 5 ~ 0.25 sec for overlapping
+
     for shift in range(12):
         inputdir = root_dir / 'preprocessed_data' / f'Billboard_data_mirex_Mm_shift_{shift}.pkl'
         with open(inputdir, 'rb') as input_data:
@@ -254,7 +272,7 @@ def segment_Billboard():
         print('Billboard data saved at %s' % outputdir)
 
 def reshape_Billboard():
-    print('Running Message: reshape Billborad ...')
+    print('Running Message: reshape Billboard ...')
 
     global n_steps
 
@@ -292,6 +310,10 @@ def reshape_Billboard():
             ssss0, = chordChange.strides
             chordChange_reshape = np.lib.stride_tricks.as_strided(chordChange, shape=(n_sequences, n_steps), strides=(ssss0 * seq_hop, ssss0))
             sequenceLen = np.array([n_steps for _ in range(n_sequences - 1)] + [n_steps - n_pad], dtype=np.int32) # [n_sequences]
+
+            # reshape data into two dimensional data
+            # original shape e.g. chroma.shape = (700, 504)
+            # now shape e.g. chroma_reshape.shape = (13, 100, 504) for n_steps = 100
 
             """BillboardData_reshape = {'op': {'chroma': array, 'TC': array, 'chord': array, 'chordChange': array, 'sequenceLen': array, 'nSequence': array}, ...}"""
             BillboardData_reshape[key] = {}
@@ -383,8 +405,8 @@ if __name__ == '__main__':
     segment_hop = 5 # ~ 0.25 sec
     n_steps = 100 #  ~ 23 sec
 
-    train_set, test_set = read_Billboard()
-    augment_Billboard()
+    # train_set, test_set = read_Billboard()
+    # augment_Billboard()
     segment_Billboard()
     reshape_Billboard()
     split_dataset(train_set, test_set)
