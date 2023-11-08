@@ -509,7 +509,7 @@ class Harmony_Transformer(object):
 
         # Training
         print('train the model...')
-        with tf.Session() as sess:
+        with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
 
             if 'GPU' in sess.graph.device.lower():
                 print("The session is running on a GPU.")
