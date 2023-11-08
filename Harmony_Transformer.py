@@ -511,11 +511,6 @@ class Harmony_Transformer(object):
         print('train the model...')
         with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
 
-            if 'GPU' in sess.graph.device.lower():
-                print("The session is running on a GPU.")
-            else:
-                print("The session is running on a CPU.")
-
             sess.run(tf.global_variables_initializer())
             epoch = num_examples_train // self._batch_size # steps per epoch
             annealing_slope = 1.0
