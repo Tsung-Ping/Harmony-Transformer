@@ -1,5 +1,5 @@
 protobuf==3.19.6
-tensorflow[and-cuda]==2.13.*
+tensorflow==1.11
 numpy==1.14.5
 scipy
 tqdm
