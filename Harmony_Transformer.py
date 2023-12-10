@@ -1,3 +1,4 @@
+import argparse
 import numpy as np # version 1.14.5
 import random
 import tensorflow as tf # version 1.11
@@ -26,7 +27,9 @@ class Harmony_Transformer(object):
                  lambda_loss_ct=3,
                  lambda_loss_c=1,
                  lambda_L2=2e-4,
-                 training_steps=100000):
+                 training_steps=100000,
+                 save_checkpoint_every_n_steps=5000,
+                 checkpoint_path: Path = None):
         self._frequency_size = frequency_size
         self._segment_width = segment_width
         self._feature_size = frequency_size * segment_width # input size (feature size)
@@ -44,6 +47,8 @@ class Harmony_Transformer(object):
         self._batch_size = batch_size
         self._initial_learning_rate = initial_learning_rate
         self._training_steps = training_steps
+        self._save_checkpoint_every_n_steps = save_checkpoint_every_n_steps
+        self._checkpoint_path = checkpoint_path
 
     def _normalize(self, inputs, epsilon=1e-8, scope="ln", reuse=None):
         '''Applies layer normalization.'''
@@ -509,11 +514,13 @@ class Harmony_Transformer(object):
 
         # Training
         print('train the model...')
-        with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
+        with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
 
             sess.run(tf.global_variables_initializer())
+            saver = tf.train.Saver()
             epoch = num_examples_train // self._batch_size # steps per epoch
             annealing_slope = 1.0
+
             for step in range(self._training_steps):
 
                 if step % epoch == 0:
@@ -547,12 +554,25 @@ class Harmony_Transformer(object):
                 if step % 100 == 0:
                     print("------ step %d: train_loss %.4f (ct %.4f, c %.4f, L2 %.4f), train_accuracy %.4f ------" % (step, train_loss, train_loss_ct, train_loss_c, train_L2, train_acc))
 
+                if step % self._save_checkpoint_every_n_steps == 0:
+
+                    if self._checkpoint_path is None:
+                        path_to_save_model = root_dir / 'checkpoints' / f"step_{step}"
+                    else:
+                        path_to_save_model = self._checkpoint_path / f"step_{step}"
+
+                    path_to_save_model.mkdir(parents=True, exist_ok=True)
+
+                    saver.save(sess, f'{path_to_save_model}/model-step-{step}-acc-{train_acc}.ckpt', global_step=step)
+                    print(f"Checkpoint saved at step {step}")
+
 if __name__ == '__main__':
 
-    model = Harmony_Transformer()
+    parser = argparse.ArgumentParser(description='Train and save Harmony Transformer model.')
+    parser.add_argument('--checkpoint_path', type=Path, default=None, help='Path to save model checkpoints')
+    parser.add_argument('--save_checkpoint_every_n_steps', type=int, default=5000, help='Save checkpoint every n steps')
+
+    args = parser.parse_args()
+
+    model = Harmony_Transformer(save_checkpoint_every_n_steps=args.save_checkpoint_every_n_steps, checkpoint_path=args.checkpoint_path)
     model.train()
-
-    # save model as pkl
-    with open("HarmonyTransformer.pkl", "wb") as f:
-        pkl.dump(model, f)
-
