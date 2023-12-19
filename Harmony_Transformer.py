@@ -1067,7 +1067,12 @@ def inference(self, model_checkpoint_path: Path, x_inference):
         print("model restored from checkpoint")
 
         # validation
-        inference_run_list = [chord_predictions, logits, chord_change_predictions, chord_change_logits]
+        inference_run_list = [
+            chord_predictions,
+            logits,
+            chord_change_predictions,
+            chord_change_logits,
+        ]
         inference_feed_dict = {
             x: x_inference,
             dropout_rate: 0.0,
@@ -1076,9 +1081,12 @@ def inference(self, model_checkpoint_path: Path, x_inference):
             slope: 1.0,
             stochastic_tensor: False,
         }
-        inference_chord_predictions, inference_chord_logits, inference_cc_predictions, inference_cc_logits  = sess.run(
-            inference_run_list, feed_dict=inference_feed_dict
-        )
+        (
+            inference_chord_predictions,
+            inference_chord_logits,
+            inference_cc_predictions,
+            inference_cc_logits,
+        ) = sess.run(inference_run_list, feed_dict=inference_feed_dict)
 
         print("inference completed")
 
@@ -1092,11 +1100,25 @@ def inference(self, model_checkpoint_path: Path, x_inference):
 def main():
     ...
 
+
 @main.command()
-@click.option("--checkpoint_path", type=Path, default=None, help="Path to save model checkpoints")
-@click.option("--save_checkpoint_every_n_steps", type=int, default=5000, help="Save checkpoint every n steps")
-@click.option("--early_stopping_counter", type=int, default=15, help="Early stopping counter")
-def train(checkpoint_path: Path, save_checkpoint_every_n_steps: int, early_stopping_counter: int):
+@click.option(
+    "--checkpoint_path", type=Path, default=None, help="Path to save model checkpoints"
+)
+@click.option(
+    "--save_checkpoint_every_n_steps",
+    type=int,
+    default=5000,
+    help="Save checkpoint every n steps",
+)
+@click.option(
+    "--early_stopping_counter", type=int, default=15, help="Early stopping counter"
+)
+def train(
+    checkpoint_path: Path,
+    save_checkpoint_every_n_steps: int,
+    early_stopping_counter: int,
+):
     model = Harmony_Transformer(
         save_checkpoint_every_n_steps=save_checkpoint_every_n_steps,
         checkpoint_path=checkpoint_path,
@@ -1106,10 +1128,17 @@ def train(checkpoint_path: Path, save_checkpoint_every_n_steps: int, early_stopp
 
 
 @main.command()
-@click.option("--model_checkpoint_path", type=Path, default=None, help="Path to model checkpoint")
-def inference(model_checkpoint_path: Path):
+@click.option(
+    "--model_checkpoint_path", type=Path, default=None, help="Path to model checkpoint"
+)
+@click.option(
+    "--inference_input", type=np.ndarray, default=None, help="Input data for inference"
+)
+def inference(model_checkpoint_path: Path, inference_input: np.ndarray):
     model = Harmony_Transformer()
-    model.inference(model_checkpoint_path=model_checkpoint_path)
+    model.inference(
+        model_checkpoint_path=model_checkpoint_path, x_inference=inference_input
+    )
 
 
 if __name__ == "__main__":
