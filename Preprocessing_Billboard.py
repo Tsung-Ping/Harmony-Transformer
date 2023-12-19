@@ -163,7 +163,7 @@ def read_Billboard():
                 annotations[name] = np.array(annotation, dtype=adt)
 
     # load features and append chord label for each frame
-    # there are 2 chromagrams for each frame, one for each channel
+    # there are 2 chromagrams for each frame, one tremble chroma, one bass chroma
     # frames has this shape: (name, onset, both_chroma, chord_int, chordChange)
     # e.g. ('0001', 0.0, array([0.1, 0.2, ...]), 0, 1)
 
@@ -618,8 +618,8 @@ if __name__ == "__main__":
     segment_hop = 5  # ~ 0.25 sec
     n_steps = 100  #  ~ 23 sec
 
-    # train_set, test_set = read_Billboard()
-    # augment_Billboard()
+    train_set, test_set = read_Billboard()
+    augment_Billboard()
     segment_Billboard()
     reshape_Billboard()
     split_dataset(train_set, test_set)
