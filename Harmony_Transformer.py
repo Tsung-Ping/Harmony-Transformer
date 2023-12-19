@@ -1027,21 +1027,7 @@ class Harmony_Transformer(object):
                     print(f"Checkpoint saved at step {step}")
 
 
-def inference(self, model_checkpoint_path: Path):
-    print("load input data...")
-    (
-        x_train,
-        TC_train,
-        y_train,
-        y_cc_train,
-        y_len_train,
-        x_valid,
-        TC_valid,
-        y_valid,
-        y_cc_valid,
-        y_len_valid,
-        split_sets,
-    ) = self.load_data()
+def inference(self, model_checkpoint_path: Path, x_inference):
 
     print("build model...")
 
@@ -1049,13 +1035,6 @@ def inference(self, model_checkpoint_path: Path):
         x = tf.placeholder(
             tf.float32, [None, self._n_steps, self._feature_size], name="encoder_inputs"
         )  # shape = [batch_size, n_steps, n_inputs]
-        y = tf.placeholder(
-            tf.int32, [None, self._n_steps], name="chord_labels"
-        )  # ground_truth, shape = [batch_size, n_steps]
-        y_cc = tf.placeholder(
-            tf.int32, [None, self._n_steps], name="chord_change_labels"
-        )  # ground_truth, shape = [batch_size, n_steps]
-        y_len = tf.placeholder(tf.int32, shape=[None], name="sequence_lengths")
         dropout_rate = tf.placeholder(tf.float32, name="dropout_rate")
         is_training = tf.placeholder(tf.bool, name="is_training")
         global_step = tf.placeholder(tf.int32, name="global_step")
@@ -1076,15 +1055,7 @@ def inference(self, model_checkpoint_path: Path):
             is_training,
         )
 
-    with tf.name_scope("accuracy"):
-        label_mask = tf.less(y, 24)  # where label != 24('X)' and label != 25('pad')
-        correct_predictions = tf.equal(chord_predictions, y)
-        correct_predictions_mask = tf.boolean_mask(
-            tensor=correct_predictions, mask=label_mask
-        )
-        accuracy = tf.reduce_mean(tf.cast(correct_predictions_mask, tf.float32))
-
-    print("test the model...")
+    print("run inference on model...")
 
     model_meta_path = list(model_checkpoint_path.glob("*.meta"))[0]
     saver = tf.train.import_meta_graph(str(model_meta_path))
@@ -1096,23 +1067,26 @@ def inference(self, model_checkpoint_path: Path):
         print("model restored from checkpoint")
 
         # validation
-        valid_run_list = [chord_predictions, y, accuracy]
-        valid_feed_fict = {
-            x: x_valid,
-            y_cc: y_cc_valid,
-            y: y_valid,
-            y_len: y_len_valid,
+        inference_run_list = [chord_predictions, logits, chord_change_predictions, chord_change_logits]
+        inference_feed_dict = {
+            x: x_inference,
             dropout_rate: 0.0,
             is_training: False,
             global_step: 0,
             slope: 1.0,
             stochastic_tensor: False,
         }
-        valid_chord_predictions, true_chord_predictions, valid_acc = sess.run(
-            valid_run_list, feed_dict=valid_feed_fict
+        inference_chord_predictions, inference_chord_logits, inference_cc_predictions, inference_cc_logits  = sess.run(
+            inference_run_list, feed_dict=inference_feed_dict
         )
 
-        print("------ valid_accuracy %.4f ------" % (valid_acc))
+        print("inference completed")
+
+        print("chord_predictions shape:", inference_chord_predictions.shape)
+        print("chord_logits shape:", inference_chord_logits.shape)
+        print("chord_change_predictions shape:", inference_cc_predictions.shape)
+        print("chord_change_logits shape:", inference_cc_logits.shape)
+
 
 @click.group()
 def main():
