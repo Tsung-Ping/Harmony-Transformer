@@ -1,4 +1,5 @@
 import argparse
+import click
 import numpy as np  # version 1.14.5
 import random
 import tensorflow as tf  # version 1.11
@@ -1026,8 +1027,7 @@ class Harmony_Transformer(object):
                     print(f"Checkpoint saved at step {step}")
 
 
-# TODO: refactor to test / inference method
-def valid(self, model_checkpoint_path):
+def inference(self, model_checkpoint_path: Path):
     print("load input data...")
     (
         x_train,
@@ -1114,33 +1114,29 @@ def valid(self, model_checkpoint_path):
 
         print("------ valid_accuracy %.4f ------" % (valid_acc))
 
+@click.group()
+def main():
+    ...
 
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(
-        description="Train and save Harmony Transformer model."
-    )
-    parser.add_argument(
-        "--checkpoint_path",
-        type=Path,
-        default=None,
-        help="Path to save model checkpoints",
-    )
-    parser.add_argument(
-        "--save_checkpoint_every_n_steps",
-        type=int,
-        default=5000,
-        help="Save checkpoint every n steps",
-    )
-    parser.add_argument(
-        "--early_stopping_counter", type=int, default=15, help="Early stopping counter"
-    )
-
-    args = parser.parse_args()
-
+@main.command()
+@click.option("--checkpoint_path", type=Path, default=None, help="Path to save model checkpoints")
+@click.option("--save_checkpoint_every_n_steps", type=int, default=5000, help="Save checkpoint every n steps")
+@click.option("--early_stopping_counter", type=int, default=15, help="Early stopping counter")
+def train(checkpoint_path: Path, save_checkpoint_every_n_steps: int, early_stopping_counter: int):
     model = Harmony_Transformer(
-        save_checkpoint_every_n_steps=args.save_checkpoint_every_n_steps,
-        checkpoint_path=args.checkpoint_path,
-        early_stopping_counter=args.early_stopping_counter,
+        save_checkpoint_every_n_steps=save_checkpoint_every_n_steps,
+        checkpoint_path=checkpoint_path,
+        early_stopping_counter=early_stopping_counter,
     )
     model.train()
+
+
+@main.command()
+@click.option("--model_checkpoint_path", type=Path, default=None, help="Path to model checkpoint")
+def inference(model_checkpoint_path: Path):
+    model = Harmony_Transformer()
+    model.inference(model_checkpoint_path=model_checkpoint_path)
+
+
+if __name__ == "__main__":
+    main()
