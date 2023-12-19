@@ -1140,6 +1140,12 @@ def inference(model_checkpoint_path: Path, inference_input: np.ndarray):
         model_checkpoint_path=model_checkpoint_path, x_inference=inference_input
     )
 
+    # TODO: add inference input of following shape:
+    # shape = [batch_size, n_steps, n_inputs]
+    # (for x_train is (67764, 100, 504), because 501 = 24*21?)
+    # I think it is easiest to just fake the target data and use preprocessing method
+    # or explore using some beatles dataset ?
+
 
 if __name__ == "__main__":
     main()
